@@ -70,6 +70,13 @@ async function loadMenuFromAPI() {
       apiFetch('/menu/promos'),
     ]);
 
+    // Defensive: ensure each response is an array before mapping
+    // If the DB cold-starts or returns an error object, skip gracefully
+    if (!Array.isArray(cats) || !Array.isArray(products)) {
+      console.warn('loadMenuFromAPI: unexpected response shape, skipping render');
+      return;
+    }
+
     MENU_CATEGORIES = cats.map(c => c.name);
 
     // Populate the category ID map used by admin.js for API calls
@@ -96,22 +103,22 @@ async function loadMenuFromAPI() {
       available:  !!p.is_available,
     }));
 
-    GLOBAL_SIZES = sizes.map(s => ({
+    GLOBAL_SIZES = Array.isArray(sizes) ? sizes.map(s => ({
       id:       s.id,
       label:    s.label,
       priceAdd: parseFloat(s.price_add),
-    }));
-    SIZE_ID_SEQ = (sizes.length ? Math.max(...sizes.map(s => s.id)) : 0) + 1;
+    })) : [];
+    SIZE_ID_SEQ = (GLOBAL_SIZES.length ? Math.max(...GLOBAL_SIZES.map(s => s.id)) : 0) + 1;
 
-    TOPPINGS = toppings.map(t => ({
+    TOPPINGS = Array.isArray(toppings) ? toppings.map(t => ({
       id:    t.id,
       name:  t.name,
       emoji: t.emoji || '•',
       price: parseFloat(t.price),
-    }));
-    TOPPING_ID_SEQ = (toppings.length ? Math.max(...toppings.map(t => t.id)) : 0) + 1;
+    })) : [];
+    TOPPING_ID_SEQ = (TOPPINGS.length ? Math.max(...TOPPINGS.map(t => t.id)) : 0) + 1;
 
-    PROMOS = promos.map(p => ({
+    PROMOS = Array.isArray(promos) ? promos.map(p => ({
       id:          p.id,
       name:        p.name,
       badge:       p.badge       || '',
@@ -123,8 +130,8 @@ async function loadMenuFromAPI() {
         sizeId:     i.size_id     || null,
         promoPrice: parseFloat(i.promo_price),
       })),
-    }));
-    PROMO_ID_SEQ = (promos.length ? Math.max(...promos.map(p => p.id)) : 0) + 1;
+    })) : [];
+    PROMO_ID_SEQ = (PROMOS.length ? Math.max(...PROMOS.map(p => p.id)) : 0) + 1;
 
   } catch (err) {
     console.warn('loadMenuFromAPI failed:', err.message);
