@@ -8,7 +8,7 @@
 // Set this to your backend URL. Change before deploying.
 // Development : 'http://localhost:4000/api'
 // Production  : 'https://your-backend.vercel.app/api'
-const API_BASE = window.FIGHTEA_API_BASE || 'https://backend-eight-vert-78.vercel.app';
+const API_BASE = window.FIGHTEA_API_BASE || 'backend-5z21dly6v-bry-greats-projects.vercel.app';
 
 /* ── APP STATE ───────────────────────────────────────────── */
 const App = {
