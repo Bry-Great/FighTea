@@ -1,10 +1,13 @@
 // ============================================================
-// FighTea — Database Connection Pool
-// File: /backend/config/db.js
+// FighTea — Database Connection Pool  v6
+// Supports Railway (requires SSL) and local MySQL (no SSL).
+// Set DB_SSL=true in Railway environment variables.
 // ============================================================
 'use strict';
 
 const mysql = require('mysql2/promise');
+
+const useSSL = process.env.DB_SSL === 'true' || process.env.NODE_ENV === 'production';
 
 const pool = mysql.createPool({
   host:               process.env.DB_HOST     || 'localhost',
@@ -15,19 +18,26 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit:    10,
   queueLimit:         0,
-  timezone:           '+08:00',           // Philippine Time
+  timezone:           '+08:00',
   charset:            'utf8mb4',
+  // SSL required for Railway and most hosted MySQL providers
+  ...(useSSL ? {
+    ssl: {
+      rejectUnauthorized: false,   // Railway uses self-signed cert
+    },
+  } : {}),
 });
 
 // Verify connection on startup
 (async () => {
   try {
     const conn = await pool.getConnection();
-    console.log('✅ MySQL connected to', process.env.DB_NAME || 'fightea_db');
+    console.log('✅ MySQL connected:', process.env.DB_NAME || 'fightea_db',
+                useSSL ? '(SSL enabled)' : '(no SSL)');
     conn.release();
   } catch (err) {
     console.error('❌ MySQL connection failed:', err.message);
-    process.exit(1);
+    // Don't exit — let Vercel retry on next request
   }
 })();
 

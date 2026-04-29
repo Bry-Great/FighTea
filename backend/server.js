@@ -28,12 +28,18 @@ app.use(cors({
     // Allow requests with no Origin header (file://, curl, Postman, mobile apps)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow any vercel.app subdomain during development/testing
+    if (origin && origin.endsWith('.vercel.app')) return callback(null, true);
     callback(new Error('Not allowed by CORS: ' + origin));
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
   exposedHeaders: ['Content-Type'],
 }));
+
+// Explicitly handle OPTIONS preflight for all routes
+app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
