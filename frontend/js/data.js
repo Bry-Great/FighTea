@@ -8,7 +8,12 @@
 // Set this to your backend URL. Change before deploying.
 // Development : 'http://localhost:4000/api'
 // Production  : 'https://your-backend.vercel.app/api'
-const API_BASE = window.FIGHTEA_API_BASE || 'https://backend-eight-vert-78.vercel.app/api';
+// API_BASE is read from window.FIGHTEA_API_BASE which must be set
+// in a <script> block BEFORE data.js loads in index.html.
+// Fallback is the production backend URL.
+function getAPIBase() {
+  return window.FIGHTEA_API_BASE || 'https://backend-eight-vert-78.vercel.app/api';
+}
 
 /* ── APP STATE ───────────────────────────────────────────── */
 const App = {
@@ -53,7 +58,7 @@ async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('fightea_token');
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(API_BASE + path, { ...options, headers });
+  const res = await fetch(getAPIBase() + path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || `API error ${res.status}`), { status: res.status, data });
   return data;

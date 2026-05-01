@@ -553,15 +553,17 @@
 
 <div class="toast-container" id="toast-container"></div>
 
+<!-- ── API Config — MUST be before data.js ── -->
+<script>
+/* Set this to your backend Vercel URL before deploying.
+   It MUST be defined before data.js loads. */
+window.FIGHTEA_API_BASE = 'https://backend-eight-vert-78.vercel.app/api';
+</script>
 <script src="../js/data.js"></script>
 <script src="../js/app.js"></script>
 <script src="../js/admin.js"></script>
 <script src="../js/notifications.js"></script>
 <script>
-/* ── API base URL — change this before deploying ── */
-window.FIGHTEA_API_BASE = 'https://backend-eight-vert-78.vercel.app/api';
-// Production example:
-// window.FIGHTEA_API_BASE = 'https://fightea-api.vercel.app/api';
 
 function updateClock(){ const el=document.getElementById('admin-clock'); if(el)el.textContent=new Date().toLocaleString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit',weekday:'short',month:'short',day:'numeric'}); }
 setInterval(updateClock,1000); updateClock();

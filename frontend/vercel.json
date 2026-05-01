@@ -1,7 +1,8 @@
 {
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/html/index.html" }
+    { "source": "/html/(.*)", "destination": "/html/index.html" },
+    { "source": "/",          "destination": "/html/index.html" }
   ],
   "headers": [
     {
