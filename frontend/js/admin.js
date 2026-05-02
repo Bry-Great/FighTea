@@ -282,7 +282,7 @@ async function loadOrderLog(page = 0) {
                 <td style="font-weight:600;font-size:13px">${formatCurrency(o.total)}</td>
                 <td><span class="${o.payment_method==='gcash'?'gcash-badge':'cash-badge'}" style="font-size:11px">${o.payment_method}</span></td>
                 <td><span class="badge badge-${o.status}" style="font-size:11px">${capitalise(o.status)}</span></td>
-                <td style="font-size:11px;color:#9A7A5A">${new Date(o.created_at).toLocaleDateString('en-PH')}</td>
+                <td style="font-size:11px;color:#9A7A5A">${new Date(o.created_at).toLocaleString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Manila'})}</td>
                 <td><button class="act-btn act-cancel" style="padding:4px 10px;font-size:11px"
                             onclick="confirmDeleteOrderLog(${o.id},'${o.order_number}')">🗑 Remove</button></td>
               </tr>`).join('')}
@@ -1039,8 +1039,12 @@ async function _loadLogoPreview() {
 }
 
 function _updateAllLogos(dataUrl) {
+  // Navbar logo
   document.querySelectorAll('.site-logo-img').forEach(img => { img.src = dataUrl; });
+  // Admin sidebar logos (desktop + mobile drawer)
   document.querySelectorAll('.admin-sidebar-logo-img img').forEach(img => { img.src = dataUrl; });
+  // Auth / login page logo
+  document.querySelectorAll('.auth-logo-img').forEach(img => { img.src = dataUrl; });
 }
 
 function initLogoUpload() {

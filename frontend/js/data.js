@@ -233,29 +233,43 @@ async function getAnalyticsFromAPI() {
 async function fetchOrders(status = 'active') {
   const data = await apiFetch(`/orders?status=${status}`);
   // Normalise to the shape the queue UI expects
-  return data.map(o => ({
-    id:           o.order_number,
-    dbId:         o.id,
-    customer:     o.customer_name,
-    phone:        o.customer_phone || '',
-    status:       o.status,
-    payment:      o.payment_method,
-    paymentStatus:o.payment_status,
-    gcashRef:     o.gcash_ref || null,
-    total:        parseFloat(o.total),
-    time:         new Date(o.created_at).toLocaleTimeString('en-PH',{hour:'2-digit',minute:'2-digit'}),
-    notes:        o.notes || '',
-    items: (o.items || []).map(i => ({
-      name:     i.product_name,
-      emoji:    '🧋',
-      variety:  null,
-      size:     i.size_label || null,
-      ice:      i.ice_label  || null,
-      toppings: i.toppings   || [],
-      qty:      i.quantity,
-      price:    parseFloat(i.unit_price),
-    })),
-  }));
+  return data.map(o => {
+    // MySQL created_at comes as UTC string — convert to Philippine Time (UTC+8)
+    const created = new Date(o.created_at);
+    const phTime  = created.toLocaleTimeString('en-PH', {
+      hour:     '2-digit',
+      minute:   '2-digit',
+      timeZone: 'Asia/Manila',
+    });
+    const phDate  = created.toLocaleDateString('en-PH', {
+      month:    'short',
+      day:      'numeric',
+      timeZone: 'Asia/Manila',
+    });
+    return {
+      id:           o.order_number,
+      dbId:         o.id,
+      customer:     o.customer_name,
+      phone:        o.customer_phone || '',
+      status:       o.status,
+      payment:      o.payment_method,
+      paymentStatus:o.payment_status,
+      gcashRef:     o.gcash_ref || null,
+      total:        parseFloat(o.total),
+      time:         `${phDate} ${phTime}`,   // e.g. "Jan 15 02:30 PM"
+      notes:        o.notes || '',
+      items: (o.items || []).map(i => ({
+        name:     i.product_name,
+        emoji:    '🧋',
+        variety:  null,
+        size:     i.size_label || null,
+        ice:      i.ice_label  || null,
+        toppings: i.toppings   || [],
+        qty:      i.quantity,
+        price:    parseFloat(i.unit_price),
+      })),
+    };
+  });
 }
 
 async function updateOrderStatusAPI(dbId, status) {
