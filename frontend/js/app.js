@@ -28,6 +28,12 @@ function showView(v) {
   if (v === 'menu')  { renderMenuPage(); }
   if (v === 'home')  { renderBestsellers(); }
   if (v === 'admin') { renderAdminDashboard(); }
+  // Re-apply the saved logo whenever the Sign In page is shown
+  if (v === 'auth' && typeof _updateAllLogos === 'function') {
+    apiFetch('/settings/logo').then(data => {
+      if (data && data.logo) _updateAllLogos(data.logo);
+    }).catch(() => {});
+  }
 }
 
 function updateNavState() {
