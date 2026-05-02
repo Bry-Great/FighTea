@@ -24,6 +24,9 @@ function adminTab(tab) {
   if (['menu','users','promos'].includes(tab) && !canManageMenu()) {
     showToast('Admin access required.', 'error'); return;
   }
+  // Stop queue polling when leaving queue tab
+  if (tab !== 'queue') stopQueuePolling();
+
   document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.admin-nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('admin-' + tab)?.classList.add('active');
@@ -45,6 +48,107 @@ function adminTab(tab) {
    ════════════════════════════════════════════════════════ */
 let _currentQueueFilter = 'active';
 
+/* ── QUEUE AUTO-REFRESH POLLING ─────────────────────────── */
+let _queuePollTimer = null;
+
+function startQueuePolling() {
+  stopQueuePolling();
+  // Poll every 10 seconds while admin is on the queue tab
+  _queuePollTimer = setInterval(() => {
+    if (App.currentView === 'admin' && _currentQueueFilter !== null) {
+      _silentRefreshQueue();
+    }
+  }, 10000);
+}
+
+function stopQueuePolling() {
+  if (_queuePollTimer) { clearInterval(_queuePollTimer); _queuePollTimer = null; }
+}
+
+// Silently refreshes queue without showing the loading spinner
+// Only adds new cards and updates stats — does not flash the whole grid
+async function _silentRefreshQueue() {
+  try {
+    const [orders, all] = await Promise.all([
+      fetchOrders(_currentQueueFilter),
+      fetchOrders('all'),
+    ]);
+    _updateStats(all);
+    _patchQueueDOM(orders);
+  } catch (_) { /* silent */ }
+}
+
+function _updateStats(all) {
+  const pending   = document.getElementById('stat-pending');
+  const preparing = document.getElementById('stat-preparing');
+  const ready     = document.getElementById('stat-ready');
+  const revenue   = document.getElementById('stat-revenue');
+  if (pending)   pending.textContent   = all.filter(o => o.status === 'pending').length;
+  if (preparing) preparing.textContent = all.filter(o => o.status === 'preparing').length;
+  if (ready)     ready.textContent     = all.filter(o => o.status === 'ready').length;
+  if (revenue)   revenue.textContent   = formatCurrency(
+    all.filter(o => o.paymentStatus === 'paid').reduce((s, o) => s + o.total, 0)
+  );
+}
+
+// Smart DOM patch: add new cards, remove gone ones, update changed ones
+// Never re-renders cards that haven't changed — no flicker
+function _patchQueueDOM(orders) {
+  const gridEl = document.getElementById('queue-grid'); if (!gridEl) return;
+
+  // Build a map of current order IDs in the grid
+  const existingIds = new Set(
+    [...gridEl.querySelectorAll('.order-card')].map(el => el.id.replace('ocard-', ''))
+  );
+  const newIds = new Set(orders.map(o => String(o.dbId)));
+
+  // Remove cards that are no longer in the filtered view
+  existingIds.forEach(id => {
+    if (!newIds.has(id)) {
+      const el = document.getElementById(`ocard-${id}`);
+      if (el) {
+        el.style.transition = 'opacity .3s, transform .3s';
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.95)';
+        setTimeout(() => el.remove(), 300);
+      }
+    }
+  });
+
+  orders.forEach(order => {
+    const existing = document.getElementById(`ocard-${order.dbId}`);
+    const newHTML  = orderCardHTML(order);
+
+    if (!existing) {
+      // New order — slide it in at the top
+      const div = document.createElement('div');
+      div.innerHTML = newHTML;
+      const card = div.firstElementChild;
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(-12px)';
+      card.style.transition = 'opacity .4s, transform .4s';
+      // Remove empty state if present
+      gridEl.querySelector('.empty-state')?.remove();
+      gridEl.prepend(card);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }));
+    } else {
+      // Existing card — only update if status changed (check badge text)
+      const currentStatus = existing.querySelector('.badge')?.className.replace('badge badge-', '');
+      if (currentStatus !== order.status) {
+        existing.outerHTML = newHTML;
+      }
+    }
+  });
+
+  // Show empty state if nothing left
+  if (orders.length === 0 && !gridEl.querySelector('.order-card')) {
+    gridEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">✅</div><h4>No orders here</h4><p>All clear!</p></div>`;
+  }
+}
+
 async function loadAndRenderQueue(filterStatus) {
   if (filterStatus) _currentQueueFilter = filterStatus;
   const f = _currentQueueFilter;
@@ -58,28 +162,30 @@ async function loadAndRenderQueue(filterStatus) {
   gridEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon" style="font-size:36px">⏳</div><p style="color:#BBA882">Loading orders…</p></div>`;
 
   try {
-    const orders = await fetchOrders(f);
-
-    // Stats
-    const all = await fetchOrders('all');
-    document.getElementById('stat-pending').textContent   = all.filter(o => o.status === 'pending').length;
-    document.getElementById('stat-preparing').textContent = all.filter(o => o.status === 'preparing').length;
-    document.getElementById('stat-ready').textContent     = all.filter(o => o.status === 'ready').length;
-    document.getElementById('stat-revenue').textContent   = formatCurrency(
-      all.filter(o => o.paymentStatus === 'paid').reduce((s, o) => s + o.total, 0)
-    );
+    const [orders, all] = await Promise.all([
+      fetchOrders(f),
+      fetchOrders('all'),
+    ]);
+    _updateStats(all);
 
     if (orders.length === 0) {
       gridEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">✅</div><h4>No orders here</h4><p>All clear!</p></div>`;
       return;
     }
     gridEl.innerHTML = orders.map(orderCardHTML).join('');
+
+    // Start auto-polling now that queue is loaded
+    startQueuePolling();
   } catch (err) {
     gridEl.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">⚠️</div><h4>Could not load orders</h4><p>${err.message}</p></div>`;
   }
 }
 
-function renderQueue(f) { loadAndRenderQueue(f); }  // alias for SSE queue_updated event
+function renderQueue(f) {
+  // Called by SSE/polling notification — use silent refresh to avoid flicker
+  if (f) _currentQueueFilter = f;
+  _silentRefreshQueue();
+}
 
 function orderCardHTML(order) {
   const actions = {
@@ -117,6 +223,18 @@ function orderCardHTML(order) {
 }
 
 async function doUpdateStatus(dbId, newStatus) {
+  // Optimistically update the card immediately — no full reload
+  const card = document.getElementById(`ocard-${dbId}`);
+  if (card) {
+    const badge = card.querySelector('.badge');
+    if (badge) {
+      badge.className = `badge badge-${newStatus}`;
+      badge.textContent = capitalise(newStatus);
+    }
+    const actionsEl = card.querySelector('.order-card-actions');
+    if (actionsEl) actionsEl.innerHTML = `<span style="font-size:12px;color:#BBA882">Updating…</span>`;
+  }
+
   try {
     await updateOrderStatusAPI(dbId, newStatus);
     const msgs = {
@@ -126,13 +244,16 @@ async function doUpdateStatus(dbId, newStatus) {
       cancelled: 'Order cancelled.',
     };
     showToast(msgs[newStatus] || `Status: ${newStatus}`, newStatus === 'cancelled' ? 'error' : 'success');
-    loadAndRenderQueue();
+    // Silent refresh updates the card with correct action buttons
+    await _silentRefreshQueue();
   } catch (err) {
     showToast('Failed to update status: ' + err.message, 'error');
+    // On failure, fully reload to restore correct state
+    loadAndRenderQueue();
   }
 }
 
-/* ── EDIT ORDER ──────────────────────────────────────────── */
+
 let _editingDbId = null;
 
 function openEditOrder(dbId, orderNum) {

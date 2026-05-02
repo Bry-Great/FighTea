@@ -162,6 +162,7 @@ function initAuth() {
 
 function logout() {
   if (typeof stopNotifications === 'function') stopNotifications();
+  if (typeof stopQueuePolling  === 'function') stopQueuePolling();
   clearSession();
   App.cart = [];
   updateCartBadge();
@@ -585,6 +586,11 @@ async function placeOrder() {
     updateCartBadge();
     closeModal('checkout-modal');
     openModal('order-confirm-modal');
+
+    // If admin dashboard queue is open, silently add the new order card immediately
+    if (typeof _silentRefreshQueue === 'function' && App.currentView === 'admin') {
+      setTimeout(_silentRefreshQueue, 500);
+    }
 
   } catch (err) {
     showToast(err.message || 'Order failed. Please try again.', 'error');

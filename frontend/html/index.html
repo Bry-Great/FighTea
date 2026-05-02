@@ -565,7 +565,7 @@ window.FIGHTEA_API_BASE = 'https://backend-eight-vert-78.vercel.app/api';
 <script src="../js/notifications.js"></script>
 <script>
 
-function updateClock(){ const el=document.getElementById('admin-clock'); if(el)el.textContent=new Date().toLocaleString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit',weekday:'short',month:'short',day:'numeric'}); }
+function updateClock(){ const el=document.getElementById('admin-clock'); if(el)el.textContent=new Date().toLocaleString('en-PH',{hour:'2-digit',minute:'2-digit',second:'2-digit',weekday:'short',month:'short',day:'numeric',timeZone:'Asia/Manila'}); }
 setInterval(updateClock,1000); updateClock();
 
 document.addEventListener('DOMContentLoaded',()=>{
