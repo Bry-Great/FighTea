@@ -115,6 +115,35 @@ async function deleteOrderLog(req, res) {
   }
 }
 
+// DELETE /api/analytics/orders/clear-history  — remove completed & cancelled orders
+async function clearHistory(req, res) {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+    // Get IDs of completed/cancelled orders
+    const [orders] = await conn.query(
+      "SELECT id FROM orders WHERE status IN ('completed','cancelled')"
+    );
+    if (orders.length === 0) {
+      await conn.commit();
+      return res.json({ message: 'No history to clear.', deleted: 0 });
+    }
+    const ids = orders.map(o => o.id);
+    // Delete in dependency order (cascade should handle it but be explicit)
+    await conn.query(`DELETE FROM order_item_toppings WHERE order_item_id IN (SELECT id FROM order_items WHERE order_id IN (?))`, [ids]);
+    await conn.query(`DELETE FROM order_items WHERE order_id IN (?)`, [ids]);
+    await conn.query(`DELETE FROM order_status_log WHERE order_id IN (?)`, [ids]);
+    await conn.query(`DELETE FROM orders WHERE id IN (?)`, [ids]);
+    await conn.commit();
+    res.json({ message: `Cleared ${ids.length} completed/cancelled orders.`, deleted: ids.length });
+  } catch (err) {
+    await conn.rollback();
+    res.status(500).json({ error: err.message });
+  } finally {
+    conn.release();
+  }
+}
+
 // DELETE /api/analytics/reset  — wipe ALL orders (admin only, irreversible)
 async function resetAnalytics(req, res) {
   const conn = await db.getConnection();
@@ -139,4 +168,4 @@ async function resetAnalytics(req, res) {
   }
 }
 
-module.exports = { getSummary, getOrderLog, deleteOrderLog, resetAnalytics };
+module.exports = { getSummary, getOrderLog, deleteOrderLog, clearHistory, resetAnalytics };

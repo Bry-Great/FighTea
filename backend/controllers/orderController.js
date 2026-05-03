@@ -49,6 +49,16 @@ async function createOrder(req, res) {
     }
 
     await conn.commit();
+
+    // Broadcast to all connected admin/staff tabs so queue auto-updates
+    broadcast('queue_updated', {
+      order_id:     orderId,
+      order_number: orderNum,
+      new_status:   'pending',
+      old_status:   null,
+      event:        'new_order',
+    });
+
     res.status(201).json({ success: true, order_number: orderNum, order_id: orderId, total });
   } catch (err) {
     await conn.rollback();
