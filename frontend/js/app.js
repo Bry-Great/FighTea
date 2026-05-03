@@ -534,47 +534,56 @@ function openGCashApp() {
   const total    = cartTotal();
   const gcashNum = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
 
-  // GCash deep link — works on Android and iOS with GCash installed
-  // Format: gcash://send?to=<number>&amount=<amount>
-  const deepLink = `gcash://send?to=${encodeURIComponent(gcashNum)}&amount=${total}&remarks=${encodeURIComponent('FighTea Order')}`;
+  // GCash deep link formats — try the most compatible one
+  // gcash://send works on most Android/iOS GCash versions
+  const deepLink = `https://app.gcash.com/send?to=${encodeURIComponent(gcashNum)}&amount=${total}`;
 
-  // Open in same tab — GCash app intercepts the gcash:// scheme
-  window.location.href = deepLink;
+  // Open in new tab — prevents page navigation away from checkout
+  const win = window.open(deepLink, '_blank');
 
-  // After 2s, if still on page, GCash isn't installed — remind to use Copy Number
+  // Fallback: try the app scheme if web link doesn't open the app
   setTimeout(() => {
-    showToast('GCash not opening? Use "Copy Number" and send via GCash manually.', 'info');
-    document.getElementById('gcash-ref-input')?.focus();
-  }, 2000);
+    window.location.href = `gcash://send?to=${encodeURIComponent(gcashNum)}&amount=${total}&remarks=${encodeURIComponent('FighTea Order')}`;
+  }, 300);
+
+  showToast('Opening GCash… After paying, enter your reference number below.', 'info');
+  setTimeout(() => document.getElementById('gcash-ref-input')?.focus(), 1500);
 }
 
 function copyGCashNumber() {
   const gcashNum = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
   if (!gcashNum) { showToast('GCash number not set. Contact the shop.', 'error'); return; }
 
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(gcashNum).then(() => {
-      showToast(`✓ Copied ${gcashNum} — open GCash → Send Money → paste!`, 'success');
-    }).catch(() => _fallbackCopy(gcashNum));
+  const doToast = () => showToast(`✓ Copied! Open GCash → Send Money → paste: ${gcashNum}`, 'success');
+
+  // Modern clipboard API
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(gcashNum).then(doToast).catch(() => {
+      _fallbackCopy(gcashNum, doToast);
+    });
   } else {
-    _fallbackCopy(gcashNum);
+    _fallbackCopy(gcashNum, doToast);
   }
 }
 
-function _fallbackCopy(text) {
-  // Fallback for older browsers / iOS
-  const el = document.createElement('textarea');
-  el.value = text;
-  el.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
-  document.body.appendChild(el);
-  el.select();
+function _fallbackCopy(text, onSuccess) {
   try {
-    document.execCommand('copy');
-    showToast(`✓ Copied ${text} — open GCash → Send Money → paste!`, 'success');
+    const ta = Object.assign(document.createElement('textarea'), {
+      value: text,
+      style: 'position:fixed;left:-9999px;top:-9999px;opacity:0',
+      readOnly: false,
+    });
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length); // iOS fix
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) onSuccess();
+    else showToast(`GCash number: ${text}`, 'info');
   } catch (_) {
-    showToast(`GCash number: ${text} — copy it manually.`, 'info');
+    showToast(`GCash number: ${text}`, 'info');
   }
-  document.body.removeChild(el);
 }
 
 async function placeOrder() {

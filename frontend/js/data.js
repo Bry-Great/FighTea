@@ -235,17 +235,27 @@ async function getAnalyticsFromAPI() {
 }
 
 /* ── ADMIN QUEUE (uses API) ──────────────────────────────── */
+// ── Universal timestamp → Philippine Time converter ─────────
+// Handles ALL formats MySQL/Railway may send:
+//   "2026-05-03 04:00:00"           no TZ marker — treat as UTC
+//   "2026-05-03T04:00:00.000Z"      ISO UTC
+//   "2026-05-03T12:00:00+08:00"     ISO with +08:00 offset
+//   "2026-05-03T04:00:00.000+00:00" ISO UTC with offset
+function _toManila(raw) {
+  if (!raw) return new Date();
+  let str = String(raw).trim().replace(' ', 'T');
+  // Only append Z if there is NO timezone marker already (+XX:XX or trailing Z)
+  if (!/[+-]\d{2}:\d{2}$/.test(str) && !/Z$/i.test(str)) {
+    str = str + 'Z';
+  }
+  const d = new Date(str);
+  return isNaN(d) ? new Date() : d;
+}
+
 async function fetchOrders(status = 'active') {
   const data = await apiFetch(`/orders?status=${status}`);
-  // Normalise to the shape the queue UI expects
   return data.map(o => {
-    // MySQL/Railway returns created_at as "2025-01-15 14:30:00" — no timezone marker.
-    // Without 'Z', JS Date parses it as LOCAL time (causing +8hr shift on UTC+8 browsers).
-    // Fix: normalize to ISO format with explicit UTC marker before parsing.
-    const rawStr = o.created_at ? String(o.created_at) : new Date().toISOString();
-    // Replace space with T, strip any trailing Z, then add Z to force UTC parse
-    const isoStr  = rawStr.replace(' ', 'T').replace(/Z$/i, '') + 'Z';
-    const created = new Date(isoStr);
+    const created = _toManila(o.created_at);
     const phTime  = created.toLocaleTimeString('en-PH', {
       hour:     '2-digit',
       minute:   '2-digit',
@@ -267,7 +277,7 @@ async function fetchOrders(status = 'active') {
       paymentStatus:o.payment_status,
       gcashRef:     o.gcash_ref || null,
       total:        parseFloat(o.total),
-      time:         `${phDate} ${phTime}`,   // e.g. "Jan 15 02:30 PM"
+      time:         `${phDate} ${phTime}`,
       notes:        o.notes || '',
       items: (o.items || []).map(i => ({
         name:     i.product_name,
