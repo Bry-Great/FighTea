@@ -532,10 +532,13 @@ function selectPaymentMethod(method) {
 }
 function openGCashApp() {
   const total = cartTotal();
+  const gcashNum = document.getElementById('gcash-shop-number')?.textContent || '';
+  // Try to open GCash app via deep link
   window.location = `gcash://pay?amount=${total}&merchant=${encodeURIComponent('FighTea')}&note=${encodeURIComponent('FighTea Order')}`;
+  // The ref input is always visible — just remind user to fill it
   setTimeout(() => {
-    showToast('GCash app not found. Please send payment manually.', 'info');
-    document.getElementById('gcash-manual-section').style.display = 'block';
+    showToast('After paying, enter your GCash reference number below.', 'info');
+    document.getElementById('gcash-ref-input')?.focus();
   }, 1500);
 }
 

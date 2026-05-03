@@ -848,3 +848,15 @@ h4{font-size:16px;font-weight:500}
   .orpop-order-num  { font-size: 16px; }
   .orpop-subtitle   { font-size: 11px; }
 }
+
+/* ── QUEUE FILTER DANGER BUTTON ─────────────────────────── */
+.queue-filter-danger {
+  background: #FFF5F5;
+  color: #C62828;
+  border-color: rgba(198,40,40,.25);
+  margin-left: auto;
+}
+.queue-filter-danger:hover {
+  background: #FFEBEE;
+  border-color: #C62828;
+}

@@ -48,6 +48,19 @@ function adminTab(tab) {
    ════════════════════════════════════════════════════════ */
 let _currentQueueFilter = 'active';
 
+/* ── CLEAR HISTORY ───────────────────────────────────────── */
+async function confirmClearHistory() {
+  if (!confirm('Remove all completed and cancelled orders from the queue view?\n\nThis deletes them from the database permanently.')) return;
+  try {
+    // Use the analytics reset endpoint scoped to completed/cancelled only
+    await apiFetch('/analytics/orders/clear-history', { method: 'DELETE' });
+    showToast('History cleared.', 'success');
+    loadAndRenderQueue();
+  } catch (err) {
+    showToast('Clear failed: ' + err.message, 'error');
+  }
+}
+
 /* ── QUEUE AUTO-REFRESH POLLING ─────────────────────────── */
 let _queuePollTimer = null;
 
