@@ -531,15 +531,50 @@ function selectPaymentMethod(method) {
   if (gcash) gcash.style.display = method === 'gcash' ? 'block' : 'none';
 }
 function openGCashApp() {
-  const total = cartTotal();
-  const gcashNum = document.getElementById('gcash-shop-number')?.textContent || '';
-  // Try to open GCash app via deep link
-  window.location = `gcash://pay?amount=${total}&merchant=${encodeURIComponent('FighTea')}&note=${encodeURIComponent('FighTea Order')}`;
-  // The ref input is always visible — just remind user to fill it
+  const total    = cartTotal();
+  const gcashNum = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
+
+  // GCash deep link — works on Android and iOS with GCash installed
+  // Format: gcash://send?to=<number>&amount=<amount>
+  const deepLink = `gcash://send?to=${encodeURIComponent(gcashNum)}&amount=${total}&remarks=${encodeURIComponent('FighTea Order')}`;
+
+  // Open in same tab — GCash app intercepts the gcash:// scheme
+  window.location.href = deepLink;
+
+  // After 2s, if still on page, GCash isn't installed — remind to use Copy Number
   setTimeout(() => {
-    showToast('After paying, enter your GCash reference number below.', 'info');
+    showToast('GCash not opening? Use "Copy Number" and send via GCash manually.', 'info');
     document.getElementById('gcash-ref-input')?.focus();
-  }, 1500);
+  }, 2000);
+}
+
+function copyGCashNumber() {
+  const gcashNum = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
+  if (!gcashNum) { showToast('GCash number not set. Contact the shop.', 'error'); return; }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(gcashNum).then(() => {
+      showToast(`✓ Copied ${gcashNum} — open GCash → Send Money → paste!`, 'success');
+    }).catch(() => _fallbackCopy(gcashNum));
+  } else {
+    _fallbackCopy(gcashNum);
+  }
+}
+
+function _fallbackCopy(text) {
+  // Fallback for older browsers / iOS
+  const el = document.createElement('textarea');
+  el.value = text;
+  el.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(el);
+  el.select();
+  try {
+    document.execCommand('copy');
+    showToast(`✓ Copied ${text} — open GCash → Send Money → paste!`, 'success');
+  } catch (_) {
+    showToast(`GCash number: ${text} — copy it manually.`, 'info');
+  }
+  document.body.removeChild(el);
 }
 
 async function placeOrder() {

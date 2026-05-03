@@ -193,7 +193,6 @@
             <button class="queue-filter"        data-filter="completed" onclick="renderQueue('completed')">Completed</button>
             <button class="queue-filter"        data-filter="cancelled" onclick="renderQueue('cancelled')">Cancelled</button>
             <button class="queue-filter"        data-filter="all"       onclick="renderQueue('all')">All</button>
-            <button class="queue-filter queue-filter-danger" onclick="confirmClearHistory()" title="Clear completed and cancelled orders from queue view">🗑 Clear History</button>
           </div>
           <div class="queue-grid" id="queue-grid">
             <div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🧋</div><h4>No active orders yet</h4><p>Orders appear here when customers place them.</p></div>
@@ -385,10 +384,13 @@
         <div class="gcash-box">
           <p style="font-size:11px;opacity:.8">Send payment to FighTea GCash:</p>
           <div class="gcash-number" id="gcash-shop-number">09171234567</div>
-          <p style="margin-top:4px">Tap below to open GCash app directly:</p>
-          <button class="gcash-open-btn" onclick="openGCashApp()">💙 Open GCash App</button>
+          <p style="margin-top:4px;margin-bottom:10px">Choose how you want to pay:</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="gcash-open-btn" style="flex:1;min-width:140px" onclick="openGCashApp()">💙 Open GCash App</button>
+            <button class="gcash-open-btn" style="flex:1;min-width:140px;background:var(--brown);border-color:var(--brown)" onclick="copyGCashNumber()">📋 Copy Number</button>
+          </div>
+          <p style="font-size:11px;color:rgba(255,255,255,.7);margin-top:8px;text-align:center">Open GCash → Send Money → paste the number</p>
         </div>
-        <!-- Reference input always visible when GCash is selected -->
         <div id="gcash-manual-section" style="display:block">
           <div class="form-group" style="margin-top:12px"><label class="form-label">GCash Reference Number <span style="color:#C62828">*</span></label><input class="form-input" id="gcash-ref-input" type="text" placeholder="Enter your GCash reference number"/><p style="font-size:11px;color:#9A7A5A;margin-top:4px">After sending payment, enter the reference number from your GCash transaction history.</p></div>
         </div>

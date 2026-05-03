@@ -239,10 +239,13 @@ async function fetchOrders(status = 'active') {
   const data = await apiFetch(`/orders?status=${status}`);
   // Normalise to the shape the queue UI expects
   return data.map(o => {
-    // MySQL created_at comes as UTC but WITHOUT timezone marker (e.g. "2025-01-15 14:30:00")
-    // Adding 'Z' forces JS to parse it as UTC, then we display in Asia/Manila (+8)
-    const rawTs  = o.created_at ? String(o.created_at).replace(' ', 'T').replace(/Z?$/, 'Z') : new Date().toISOString();
-    const created = new Date(rawTs);
+    // MySQL/Railway returns created_at as "2025-01-15 14:30:00" — no timezone marker.
+    // Without 'Z', JS Date parses it as LOCAL time (causing +8hr shift on UTC+8 browsers).
+    // Fix: normalize to ISO format with explicit UTC marker before parsing.
+    const rawStr = o.created_at ? String(o.created_at) : new Date().toISOString();
+    // Replace space with T, strip any trailing Z, then add Z to force UTC parse
+    const isoStr  = rawStr.replace(' ', 'T').replace(/Z$/i, '') + 'Z';
+    const created = new Date(isoStr);
     const phTime  = created.toLocaleTimeString('en-PH', {
       hour:     '2-digit',
       minute:   '2-digit',
