@@ -530,119 +530,121 @@ function selectPaymentMethod(method) {
   const gcash = document.getElementById('gcash-fields');
   if (gcash) gcash.style.display = method === 'gcash' ? 'block' : 'none';
 }
-function openGCashApp() {
-  const total    = cartTotal();
-  const gcashNum = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
-
-  // GCash deep link formats — try the most compatible one
-  // gcash://send works on most Android/iOS GCash versions
-  const deepLink = `https://app.gcash.com/send?to=${encodeURIComponent(gcashNum)}&amount=${total}`;
-
-  // Open in new tab — prevents page navigation away from checkout
-  const win = window.open(deepLink, '_blank');
-
-  // Fallback: try the app scheme if web link doesn't open the app
-  setTimeout(() => {
-    window.location.href = `gcash://send?to=${encodeURIComponent(gcashNum)}&amount=${total}&remarks=${encodeURIComponent('FighTea Order')}`;
-  }, 300);
-
-  showToast('Opening GCash… After paying, enter your reference number below.', 'info');
-  setTimeout(() => document.getElementById('gcash-ref-input')?.focus(), 1500);
-}
-
-function copyGCashNumber() {
-  const gcashNum = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
-  if (!gcashNum) { showToast('GCash number not set. Contact the shop.', 'error'); return; }
-
-  const doToast = () => showToast(`✓ Copied! Open GCash → Send Money → paste: ${gcashNum}`, 'success');
-
-  // Modern clipboard API
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(gcashNum).then(doToast).catch(() => {
-      _fallbackCopy(gcashNum, doToast);
-    });
-  } else {
-    _fallbackCopy(gcashNum, doToast);
-  }
-}
-
-function _fallbackCopy(text, onSuccess) {
-  try {
-    const ta = Object.assign(document.createElement('textarea'), {
-      value: text,
-      style: 'position:fixed;left:-9999px;top:-9999px;opacity:0',
-      readOnly: false,
-    });
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    ta.setSelectionRange(0, text.length); // iOS fix
-    const ok = document.execCommand('copy');
-    document.body.removeChild(ta);
-    if (ok) onSuccess();
-    else showToast(`GCash number: ${text}`, 'info');
-  } catch (_) {
-    showToast(`GCash number: ${text}`, 'info');
-  }
-}
+function openGCashApp() { /* legacy — no longer used with PayMongo */ }
+function copyGCashNumber() { /* legacy — no longer used with PayMongo */ }
+function _fallbackCopy() { /* legacy */ }
 
 async function placeOrder() {
-  if (App.cart.length === 0)  { showToast('Your cart is empty!', 'error'); return; }
-  if (!isLoggedIn())           { showToast('Please sign in first.', 'info'); showView('auth'); return; }
-  const gcashRef = selectedPayment === 'gcash'
-    ? document.getElementById('gcash-ref-input')?.value.trim()
-    : null;
-  if (selectedPayment === 'gcash' && !gcashRef) {
-    showToast('Please enter your GCash reference number.', 'error'); return;
-  }
+  if (App.cart.length === 0) { showToast('Your cart is empty!', 'error'); return; }
+  if (!isLoggedIn()) { showToast('Please sign in first.', 'info'); showView('auth'); return; }
 
   const btn = document.getElementById('place-order-btn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Placing order…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Processing…'; }
 
   try {
-    const payload = {
+    // Step 1 — Create the order record in DB (pending / unpaid)
+    const orderPayload = {
       items: App.cart.map(i => ({
         product_id:  i.itemId,
         name:        i.name,
-        size:        i.size      || null,
-        size_price:  i.size      ? (GLOBAL_SIZES.find(s => s.label === i.size)?.priceAdd || 0) : 0,
-        ice:         i.ice       || null,
-        toppings:    i.toppings.map(name => {
+        size:        i.size        || null,
+        size_price:  0,
+        ice:         i.ice         || null,
+        toppings:    (i.toppings || []).map(name => {
           const t = TOPPINGS.find(t => t.name === name);
           return { name, price: t?.price || 15 };
         }),
-        qty:        i.qty,
-        unit_price: i.price,
-        line_total: i.price * i.qty,
+        qty:         i.qty,
+        unit_price:  i.price,
+        line_total:  i.price * i.qty,
       })),
       payment_method: selectedPayment,
-      gcash_ref:      gcashRef || null,
+      gcash_ref:      null,
       notes:          document.getElementById('order-notes')?.value || '',
     };
 
-    const data = await apiFetch('/orders', { method: 'POST', body: JSON.stringify(payload) });
-
-    // Show confirmation
-    document.getElementById('confirm-order-id').textContent    = data.order_number;
-    document.getElementById('confirm-order-total').textContent = formatCurrency(data.total);
-    document.getElementById('confirm-payment').textContent     = selectedPayment === 'gcash'
-      ? `GCash — Ref: ${gcashRef}`
-      : 'Cash on pickup';
+    const orderData = await apiFetch('/orders', {
+      method: 'POST',
+      body:   JSON.stringify(orderPayload),
+    });
 
     App.cart = [];
     updateCartBadge();
     closeModal('checkout-modal');
-    openModal('order-confirm-modal');
 
-    // If admin dashboard queue is open, silently add the new order card immediately
+    // Step 2 — For GCash: create PayMongo payment link and redirect
+    if (selectedPayment === 'gcash') {
+      showToast('Redirecting to GCash payment…', 'info');
+
+      const payData = await apiFetch('/payments/gcash/create', {
+        method: 'POST',
+        body:   JSON.stringify({
+          order_id:       orderData.order_id,
+          order_number:   orderData.order_number,
+          amount:         orderData.total,
+          customer_name:  App.currentUser.name,
+          customer_email: App.currentUser.email,
+        }),
+      });
+
+      // Store linkId so the success page can verify
+      sessionStorage.setItem('ft_pending_link',  payData.payment_link_id);
+      sessionStorage.setItem('ft_pending_order', orderData.order_number);
+      sessionStorage.setItem('ft_pending_total', orderData.total);
+
+      // Redirect to PayMongo checkout
+      window.location.href = payData.checkout_url;
+      return;
+    }
+
+    // Step 3 — For Cash: show confirmation immediately
+    _showConfirmation(orderData.order_number, orderData.total, 'cash', null);
+
     if (typeof _silentRefreshQueue === 'function' && App.currentView === 'admin') {
       setTimeout(_silentRefreshQueue, 500);
     }
-
   } catch (err) {
     showToast(err.message || 'Order failed. Please try again.', 'error');
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Place Order →'; }
+  }
+}
+
+function _showConfirmation(orderNum, total, payment, gcashRef) {
+  document.getElementById('confirm-order-id').textContent    = orderNum;
+  document.getElementById('confirm-order-total').textContent = formatCurrency(total);
+  document.getElementById('confirm-payment').textContent     = payment === 'gcash'
+    ? 'GCash — Payment confirmed ✓'
+    : 'Cash on pickup';
+  openModal('order-confirm-modal');
+}
+
+// Called on page load — checks if returning from PayMongo GCash redirect
+async function checkPayMongoReturn() {
+  const params   = new URLSearchParams(window.location.search);
+  const status   = params.get('status');    // 'success' or 'failed'
+  const linkId   = sessionStorage.getItem('ft_pending_link');
+  const orderNum = sessionStorage.getItem('ft_pending_order');
+  const total    = sessionStorage.getItem('ft_pending_total');
+
+  if (!status || !linkId) return;
+
+  // Clean up URL and session
+  window.history.replaceState({}, '', window.location.pathname);
+  sessionStorage.removeItem('ft_pending_link');
+  sessionStorage.removeItem('ft_pending_order');
+  sessionStorage.removeItem('ft_pending_total');
+
+  if (status === 'success') {
+    // Verify with backend (also marks order paid in DB)
+    try {
+      await apiFetch(`/payments/gcash/verify/${linkId}`);
+    } catch (_) { /* webhook may have already handled it */ }
+
+    showToast('GCash payment confirmed! 🎉', 'success');
+    _showConfirmation(orderNum, parseFloat(total), 'gcash', null);
+  } else {
+    showToast('GCash payment was not completed. You can try again or pay with cash on pickup.', 'error');
   }
 }
 
@@ -667,6 +669,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isLoggedIn() && typeof startNotifications === 'function') {
     startNotifications();
   }
+
+  // Check if returning from PayMongo GCash payment
+  checkPayMongoReturn();
 
   document.querySelectorAll('.modal-overlay').forEach(o => {
     o.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });

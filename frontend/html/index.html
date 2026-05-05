@@ -378,21 +378,12 @@
       <div class="option-title">Payment Method</div>
       <div class="payment-methods">
         <div class="payment-card active" data-method="cash" onclick="selectPaymentMethod('cash')"><div class="payment-icon">💵</div><div class="payment-label">Cash</div><div style="font-size:11px;color:#9A7A5A;margin-top:4px">Pay on pickup</div></div>
-        <div class="payment-card" data-method="gcash" onclick="selectPaymentMethod('gcash')"><div class="payment-icon">💙</div><div class="payment-label">GCash</div><div style="font-size:11px;color:#9A7A5A;margin-top:4px">Direct GCash payment</div></div>
+        <div class="payment-card" data-method="gcash" onclick="selectPaymentMethod('gcash')"><div class="payment-icon">💙</div><div class="payment-label">GCash</div><div style="font-size:11px;color:#9A7A5A;margin-top:4px">Pay via PayMongo</div></div>
       </div>
       <div id="gcash-fields" style="display:none">
-        <div class="gcash-box">
-          <p style="font-size:11px;opacity:.8">Send payment to FighTea GCash:</p>
-          <div class="gcash-number" id="gcash-shop-number">09171234567</div>
-          <p style="margin-top:4px;margin-bottom:10px">Choose how you want to pay:</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="gcash-open-btn" style="flex:1;min-width:140px" onclick="openGCashApp()">💙 Open GCash App</button>
-            <button class="gcash-open-btn" style="flex:1;min-width:140px" onclick="copyGCashNumber()">📋 Copy Number</button>
-          </div>
-          <p style="font-size:11px;color:rgba(255,255,255,.7);margin-top:8px;text-align:center">Open GCash → Send Money → paste the number</p>
-        </div>
-        <div id="gcash-manual-section" style="display:block">
-          <div class="form-group" style="margin-top:12px"><label class="form-label">GCash Reference Number <span style="color:#C62828">*</span></label><input class="form-input" id="gcash-ref-input" type="text" placeholder="Enter your GCash reference number"/><p style="font-size:11px;color:#9A7A5A;margin-top:4px">After sending payment, enter the reference number from your GCash transaction history.</p></div>
+        <div class="gcash-box" style="text-align:center">
+          <p style="font-size:13px;opacity:.9;margin-bottom:4px">You will be redirected to a secure GCash payment page.</p>
+          <p style="font-size:11px;opacity:.7">Powered by PayMongo · After paying, you'll be brought back here.</p>
         </div>
       </div>
     </div>
@@ -401,7 +392,7 @@
       <span style="font-size:16px;font-weight:500">Order Total</span>
       <span style="font-size:22px;font-weight:700;color:var(--brown)" id="checkout-total">₱0</span>
     </div>
-    <button class="btn btn-primary btn-full btn-lg" style="margin-top:16px" onclick="placeOrder()">Place Order →</button>
+    <button id="place-order-btn" class="btn btn-primary btn-full btn-lg" style="margin-top:16px" onclick="placeOrder()">Place Order →</button>
   </div>
 </div>
 
