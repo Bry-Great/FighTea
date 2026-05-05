@@ -53,6 +53,7 @@ app.use('/api/users',         require('./routes/users'));
 app.use('/api/analytics',     require('./routes/analytics'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/settings',      require('./routes/settings'));
+app.use('/api/payments',      require('./routes/payments'));
 
 app.get('/api/health', (_req, res) =>
   res.json({ status: 'ok', timestamp: new Date().toISOString() })
