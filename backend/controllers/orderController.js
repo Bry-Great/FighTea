@@ -15,19 +15,23 @@ async function createOrder(req, res) {
     const { items, payment_method, gcash_ref, notes } = req.body;
     if (!items?.length) return res.status(400).json({ error: 'Order must have at least one item.' });
 
-    const today    = new Date().toISOString().slice(0, 10);   // 'YYYY-MM-DD'
+    const today    = new Date().toISOString().slice(0, 10);
     const total    = items.reduce((s, i) => s + i.line_total, 0);
     const orderNum = 'FT-' + Date.now().toString().slice(-6);
+    const gcashReceipt = req.body.gcash_receipt || null;  // base64 image from customer
 
     const [orderResult] = await conn.query(
       `INSERT INTO orders
          (order_number, user_id, customer_name, customer_phone,
           status, payment_method, payment_status, gcash_ref,
-          subtotal, total, notes, order_date)
-       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)`,
+          gcash_receipt, subtotal, total, notes, order_date)
+       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)`,
       [orderNum, req.user.id, req.user.name, req.user.phone || null,
-       payment_method, payment_method === 'gcash' ? 'paid' : 'unpaid',
-       gcash_ref || null, total, total, notes || null, today]
+       payment_method,
+       payment_method === 'gcash' ? 'pending_verification' : 'unpaid',
+       null,
+       gcashReceipt,
+       total, total, notes || null, today]
     );
     const orderId = orderResult.insertId;
 

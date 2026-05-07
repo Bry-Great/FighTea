@@ -143,6 +143,7 @@ CREATE TABLE IF NOT EXISTS `orders` (
   `payment_method` ENUM('cash','gcash') NOT NULL DEFAULT 'cash',
   `payment_status` ENUM('unpaid','paid','refunded') NOT NULL DEFAULT 'unpaid',
   `gcash_ref`      VARCHAR(50)   DEFAULT NULL,
+  `gcash_receipt`  MEDIUMTEXT    DEFAULT NULL,   -- base64 receipt image from customer
   `subtotal`       DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `discount`       DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `total`          DECIMAL(10,2) NOT NULL DEFAULT 0.00,
