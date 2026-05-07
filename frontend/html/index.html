@@ -378,12 +378,35 @@
       <div class="option-title">Payment Method</div>
       <div class="payment-methods">
         <div class="payment-card active" data-method="cash" onclick="selectPaymentMethod('cash')"><div class="payment-icon">💵</div><div class="payment-label">Cash</div><div style="font-size:11px;color:#9A7A5A;margin-top:4px">Pay on pickup</div></div>
-        <div class="payment-card" data-method="gcash" onclick="selectPaymentMethod('gcash')"><div class="payment-icon">💙</div><div class="payment-label">GCash</div><div style="font-size:11px;color:#9A7A5A;margin-top:4px">Pay via PayMongo</div></div>
+        <div class="payment-card" data-method="gcash" onclick="selectPaymentMethod('gcash')"><div class="payment-icon">💙</div><div class="payment-label">GCash</div><div style="font-size:11px;color:#9A7A5A;margin-top:4px">Upload receipt to confirm</div></div>
       </div>
       <div id="gcash-fields" style="display:none">
-        <div class="gcash-box" style="text-align:center">
-          <p style="font-size:13px;opacity:.9;margin-bottom:4px">You will be redirected to a secure GCash payment page.</p>
-          <p style="font-size:11px;opacity:.7">Powered by PayMongo · After paying, you'll be brought back here.</p>
+        <!-- Step 1: Send payment -->
+        <div class="gcash-box">
+          <p style="font-size:12px;opacity:.8;margin-bottom:6px">Step 1 — Send your payment to FighTea GCash:</p>
+          <div class="gcash-number" id="gcash-shop-number">09171234567</div>
+          <button class="gcash-open-btn" style="margin-top:10px;width:100%" onclick="copyGCashNumber()">📋 Copy GCash Number</button>
+        </div>
+        <!-- Step 2: Upload receipt -->
+        <div style="margin-top:14px">
+          <p class="form-label" style="margin-bottom:8px">Step 2 — Upload your GCash receipt <span style="color:#C62828">*</span></p>
+          <p style="font-size:11px;color:#9A7A5A;margin-bottom:10px">Open GCash → Transaction History → tap your payment → Download Receipt. Then upload it here.</p>
+          <!-- Upload area -->
+          <div id="receipt-upload-area" class="img-upload-area" style="cursor:pointer;padding:20px 16px" onclick="document.getElementById('gcash-receipt-input').click()">
+            <div style="font-size:28px;margin-bottom:6px">🧾</div>
+            <p style="font-size:13px;color:var(--brown-light);font-weight:500">Tap to upload receipt</p>
+            <p style="font-size:11px;color:#BBA882;margin-top:3px">JPG, PNG, or screenshot · Max 5MB</p>
+            <input type="file" id="gcash-receipt-input" accept="image/*" capture="environment" style="display:none" onchange="handleReceiptUpload(this)"/>
+          </div>
+          <!-- Preview after upload -->
+          <div id="receipt-preview-wrap" style="display:none;margin-top:10px;position:relative">
+            <img id="receipt-preview-img" src="" alt="GCash Receipt"
+                 style="width:100%;max-height:220px;object-fit:contain;border-radius:var(--r-sm);border:2px solid var(--teal);background:var(--cream)"/>
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+              <span style="font-size:12px;color:var(--teal);font-weight:600">✓ Receipt uploaded</span>
+              <button onclick="clearReceipt()" style="background:none;border:none;font-size:11px;color:#9A7A5A;cursor:pointer;text-decoration:underline">Remove</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

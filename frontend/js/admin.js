@@ -48,7 +48,33 @@ function adminTab(tab) {
    ════════════════════════════════════════════════════════ */
 let _currentQueueFilter = 'active';
 
-/* ── CLEAR HISTORY ───────────────────────────────────────── */
+/* ── RECEIPT FULLSCREEN VIEWER ───────────────────────────── */
+function viewReceiptFullscreen(dbId) {
+  const card = document.getElementById(`ocard-${dbId}`);
+  const img  = card?.querySelector('img[alt="GCash Receipt"]');
+  if (!img) return;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,.88);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;cursor:zoom-out;
+  `;
+  overlay.innerHTML = `
+    <div style="position:relative;max-width:100%;max-height:100%">
+      <img src="${img.src}" style="max-width:90vw;max-height:90vh;object-fit:contain;border-radius:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)" alt="GCash Receipt"/>
+      <button onclick="this.closest('[style*=fixed]').remove()"
+              style="position:absolute;top:-12px;right:-12px;width:32px;height:32px;
+                     border-radius:50%;background:#fff;border:none;font-size:16px;
+                     cursor:pointer;display:flex;align-items:center;justify-content:center;
+                     box-shadow:0 2px 8px rgba(0,0,0,.3)">✕</button>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+
 async function confirmClearHistory() {
   if (!confirm('Remove all completed and cancelled orders from the queue view?\n\nThis deletes them from the database permanently.')) return;
   try {
@@ -212,9 +238,28 @@ function orderCardHTML(order) {
     completed: `<span style="font-size:12px;color:var(--teal)">✓ Completed</span>`,
     cancelled: `<span style="font-size:12px;color:#C62828">✕ Cancelled</span>`,
   };
+
   const payBadge = order.payment === 'gcash'
-    ? `<span class="gcash-badge">💙 GCash${order.gcashRef ? ' · ' + order.gcashRef : ''}</span>`
-    : `<span class="cash-badge">💵 Cash</span>`;
+    ? `<span class="gcash-badge">💙 GCash — Verify Receipt</span>`
+    : `<span class="cash-badge">💵 Cash on Pickup</span>`;
+
+  // GCash receipt image — shown only for GCash orders that have a receipt
+  const receiptHTML = (order.payment === 'gcash' && order.gcashReceipt)
+    ? `<div style="margin:8px 0">
+        <p style="font-size:11px;color:#9A7A5A;margin-bottom:4px;font-weight:600">📄 GCash Receipt (verify before preparing):</p>
+        <img src="${order.gcashReceipt}" alt="GCash Receipt"
+             style="width:100%;max-height:200px;object-fit:contain;border-radius:var(--r-sm);
+                    border:1.5px solid var(--teal);background:var(--cream);cursor:pointer"
+             onclick="viewReceiptFullscreen('${order.dbId}')"
+             title="Click to view full size"/>
+        <p style="font-size:10px;color:#BBA882;margin-top:3px;text-align:center">Tap image to view full size</p>
+       </div>`
+    : (order.payment === 'gcash'
+        ? `<div style="margin:8px 0;padding:8px;background:#FFF3E0;border-radius:var(--r-sm);border-left:3px solid #E65100">
+            <p style="font-size:11px;color:#E65100;font-weight:600">⚠️ No receipt uploaded</p>
+           </div>`
+        : '');
+
   const itemsList = order.items.map(i => {
     const opts = [i.variety, i.size, i.ice].filter(Boolean).join(', ');
     const tops = i.toppings?.length ? ` + ${i.toppings.join(', ')}` : '';
@@ -225,6 +270,7 @@ function orderCardHTML(order) {
     <div class="order-card-head"><span class="order-card-num">${order.id}</span><span class="order-card-time">${order.time}</span></div>
     <div class="order-card-name">${order.customer}</div>
     <div style="margin:4px 0">${payBadge}</div>
+    ${receiptHTML}
     <div class="order-card-items" style="white-space:pre-line">${itemsList || 'No items'}</div>
     <div style="display:flex;align-items:center;justify-content:space-between">
       <span class="badge badge-${order.status}">${capitalise(order.status)}</span>
