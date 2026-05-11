@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password_hash` VARCHAR(255)     NOT NULL,
   `role`          ENUM('customer','admin','staff') NOT NULL DEFAULT 'customer',
   `is_active`     TINYINT(1)       NOT NULL DEFAULT 1,
+  `is_trusted`    TINYINT(1)       NOT NULL DEFAULT 0,   -- ⭐ Trusted/Frequent customer
   `created_at`    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at`    TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP
                                    ON UPDATE CURRENT_TIMESTAMP,

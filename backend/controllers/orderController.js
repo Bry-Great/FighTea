@@ -75,15 +75,17 @@ async function createOrder(req, res) {
 async function getOrders(req, res) {
   try {
     const { status } = req.query;
-    let sql = 'SELECT * FROM orders';
+    let sql = `SELECT o.*, u.is_trusted
+               FROM orders o
+               LEFT JOIN users u ON o.user_id = u.id`;
     const params = [];
     if (status === 'active') {
-      sql += " WHERE status NOT IN ('completed','cancelled')";
+      sql += " WHERE o.status NOT IN ('completed','cancelled')";
     } else if (status && status !== 'all') {
-      sql += ' WHERE status = ?';
+      sql += ' WHERE o.status = ?';
       params.push(status);
     }
-    sql += ' ORDER BY created_at DESC';
+    sql += ' ORDER BY o.created_at DESC';
     const [orders] = await db.query(sql, params);
 
     // Attach items for each order
@@ -132,6 +134,17 @@ async function updateOrderStatus(req, res) {
         payment:      order.payment_method,
         timestamp:    new Date().toISOString(),
       });
+    }
+
+    // ── Auto-trust: if user has 3+ completed orders, grant trusted badge ──
+    if (newStatus === 'completed') {
+      const [[{ comp_count }]] = await db.query(
+        "SELECT COUNT(*) AS comp_count FROM orders WHERE user_id = ? AND status = 'completed'",
+        [order.user_id]
+      );
+      if (comp_count >= 3 && order.user_id) {
+        await db.query('UPDATE users SET is_trusted = 1 WHERE id = ? AND is_trusted = 0', [order.user_id]);
+      }
     }
 
     // ── Broadcast queue refresh to all staff/admin tabs ──────

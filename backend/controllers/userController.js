@@ -10,7 +10,7 @@ const db     = require('../config/db');
 async function getUsers(req, res) {
   try {
     const [rows] = await db.query(
-      'SELECT id, full_name AS name, email, phone, role, is_active, created_at FROM users ORDER BY id'
+      'SELECT id, full_name AS name, email, phone, role, is_active, is_trusted, created_at FROM users ORDER BY id'
     );
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -35,16 +35,23 @@ async function createUser(req, res) {
 async function updateUser(req, res) {
   try {
     const { name, email, phone, role, password } = req.body;
+  const isTrusted = req.body.is_trusted !== undefined ? (req.body.is_trusted ? 1 : 0) : undefined;
     if (password) {
       const hash = await bcrypt.hash(password, 12);
       await db.query(
-        'UPDATE users SET full_name=?, email=?, phone=?, role=?, password_hash=? WHERE id=?',
-        [name?.trim(), email?.trim().toLowerCase(), phone || null, role, hash, req.params.id]
+        'UPDATE users SET full_name=?, email=?, phone=?, role=?, password_hash=?' +
+        (isTrusted !== undefined ? ', is_trusted=?' : '') + ' WHERE id=?',
+        isTrusted !== undefined
+          ? [name?.trim(), email?.trim().toLowerCase(), phone || null, role, hash, isTrusted, req.params.id]
+          : [name?.trim(), email?.trim().toLowerCase(), phone || null, role, hash, req.params.id]
       );
     } else {
       await db.query(
-        'UPDATE users SET full_name=?, email=?, phone=?, role=? WHERE id=?',
-        [name?.trim(), email?.trim().toLowerCase(), phone || null, role, req.params.id]
+        'UPDATE users SET full_name=?, email=?, phone=?, role=?' +
+        (isTrusted !== undefined ? ', is_trusted=?' : '') + ' WHERE id=?',
+        isTrusted !== undefined
+          ? [name?.trim(), email?.trim().toLowerCase(), phone || null, role, isTrusted, req.params.id]
+          : [name?.trim(), email?.trim().toLowerCase(), phone || null, role, req.params.id]
       );
     }
     res.json({ message: 'User updated.' });
