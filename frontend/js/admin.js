@@ -268,7 +268,10 @@ function orderCardHTML(order) {
 
   return `<div class="order-card" id="ocard-${order.dbId}">
     <div class="order-card-head"><span class="order-card-num">${order.id}</span><span class="order-card-time">${order.time}</span></div>
-    <div class="order-card-name">${order.customer}</div>
+    <div class="order-card-name">
+      ${order.customer}
+      ${order.isTrusted ? `<span class="trusted-badge-sm" title="Trusted Customer">⭐ Trusted</span>` : ''}
+    </div>
     <div style="margin:4px 0">${payBadge}</div>
     ${receiptHTML}
     <div class="order-card-items" style="white-space:pre-line">${itemsList || 'No items'}</div>
@@ -1108,26 +1111,49 @@ async function loadAndRenderUsers() {
     return;
   }
   const tbody = document.getElementById('users-table-body'); if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#BBA882;padding:20px">Loading…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#BBA882;padding:20px">Loading…</td></tr>`;
   try {
     _allUsers = await apiFetch('/users');
     tbody.innerHTML = _allUsers.map(u => `
       <tr>
         <td style="font-size:12px;color:#9A7A5A">#${u.id}</td>
-        <td><strong>${u.name}</strong></td>
+        <td>
+          <strong>${u.name}</strong>
+          ${u.is_trusted ? `<span class="trusted-badge" title="Trusted Customer">⭐ Trusted</span>` : ''}
+        </td>
         <td style="color:var(--brown-light)">${u.email}</td>
         <td>${u.phone||'—'}</td>
         <td><span class="badge badge-${u.role}">${capitalise(u.role)}</span></td>
+        <td>
+          ${u.role === 'customer'
+            ? `<button class="act-btn ${u.is_trusted ? 'act-cancel' : 'act-prepare'}"
+                       style="padding:4px 10px;font-size:11px"
+                       onclick="toggleTrust(${u.id}, ${u.is_trusted ? 0 : 1})">
+                 ${u.is_trusted ? '✕ Remove Trust' : '⭐ Mark Trusted'}
+               </button>`
+            : ''}
+        </td>
         <td><div style="display:flex;gap:6px">
           <button class="act-btn act-edit"   style="padding:5px 12px;font-size:12px" onclick="openEditUser(${u.id})">Edit</button>
           ${u.role !== 'admin' ? `<button class="act-btn act-cancel" style="padding:5px 12px;font-size:12px" onclick="removeUser(${u.id})">Remove</button>` : ''}
         </div></td>
       </tr>`).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" style="color:#C62828;padding:12px">${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color:#C62828;padding:12px">${err.message}</td></tr>`;
   }
 }
 function renderUsersTable() { loadAndRenderUsers(); }  // alias
+
+async function toggleTrust(userId, newValue) {
+  try {
+    await apiFetch(`/users/${userId}/trust`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ is_trusted: newValue }),
+    });
+    showToast(newValue ? '⭐ User marked as Trusted Customer.' : 'Trust badge removed.', 'success');
+    loadAndRenderUsers();
+  } catch (err) { showToast(err.message, 'error'); }
+}
 
 function openAddUser() {
   _editingUserId = null;

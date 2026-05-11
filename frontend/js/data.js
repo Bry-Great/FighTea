@@ -277,6 +277,7 @@ async function fetchOrders(status = 'active') {
       paymentStatus:o.payment_status,
       gcashRef:     o.gcash_ref     || null,
       gcashReceipt: o.gcash_receipt || null,
+      isTrusted:    !!o.is_trusted,
       total:        parseFloat(o.total),
       time:         `${phDate} ${phTime}`,
       notes:        o.notes || '',

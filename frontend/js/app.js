@@ -537,23 +537,68 @@ let _gcashReceiptBase64 = null;
 function copyGCashNumber() {
   const num = document.getElementById('gcash-shop-number')?.textContent?.trim() || '';
   if (!num) { showToast('GCash number not set. Contact the shop.', 'error'); return; }
-  const doToast = () => showToast(`✓ Copied ${num} — paste it in GCash → Send Money!`, 'success');
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(num).then(doToast).catch(() => _execCopy(num, doToast));
+
+  // Strategy 1: Modern Clipboard API (works on HTTPS + user gesture)
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(num)
+      .then(() => showToast(`✓ Copied ${num} — paste it in GCash → Send Money!`, 'success'))
+      .catch(() => _showCopyFallback(num));
+    return;
+  }
+
+  // Strategy 2: execCommand fallback (older browsers / Android WebView)
+  _showCopyFallback(num);
+}
+
+function _showCopyFallback(num) {
+  // Create a temporary input, select all, copy
+  const input = document.createElement('input');
+  input.value = num;
+  input.style.cssText = 'position:fixed;left:0;top:0;opacity:0.01;width:1px;height:1px;border:none;padding:0';
+  document.body.appendChild(input);
+  input.focus();
+  input.select();
+  input.setSelectionRange(0, num.length);
+
+  let copied = false;
+  try {
+    copied = document.execCommand('copy');
+  } catch (_) {}
+  document.body.removeChild(input);
+
+  if (copied) {
+    showToast(`✓ Copied ${num} — paste it in GCash → Send Money!`, 'success');
   } else {
-    _execCopy(num, doToast);
+    // Strategy 3: Show number prominently so user can manually tap-hold copy
+    _showCopyModal(num);
   }
 }
 
-function _execCopy(text, onSuccess) {
-  const ta = document.createElement('textarea');
-  ta.value = text;
-  Object.assign(ta.style, { position:'fixed', left:'-9999px', top:'-9999px', opacity:'0' });
-  document.body.appendChild(ta);
-  ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
-  try { if (document.execCommand('copy')) onSuccess(); else showToast(`GCash: ${text}`, 'info'); }
-  catch(_) { showToast(`GCash: ${text}`, 'info'); }
-  document.body.removeChild(ta);
+function _showCopyModal(num) {
+  // Last resort: show the number large so user can long-press and copy manually
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(0,0,0,.75);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  `;
+  el.innerHTML = `
+    <div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;max-width:320px;width:100%">
+      <p style="font-size:13px;color:#555;margin-bottom:12px">Long-press the number below to copy:</p>
+      <div style="font-size:28px;font-weight:700;color:#1a73e8;letter-spacing:2px;
+                  padding:16px;background:#f0f4ff;border-radius:10px;
+                  border:2px dashed #1a73e8;user-select:all;cursor:text;margin-bottom:16px">
+        ${num}
+      </div>
+      <p style="font-size:11px;color:#999;margin-bottom:16px">Open GCash → Send Money → paste this number</p>
+      <button onclick="this.closest('div[style*=fixed]').remove()"
+              style="background:#4CAF50;color:#fff;border:none;border-radius:8px;
+                     padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;width:100%">
+        Got it
+      </button>
+    </div>`;
+  el.addEventListener('click', e => { if (e.target === el) el.remove(); });
+  document.body.appendChild(el);
 }
 
 function handleReceiptUpload(input) {
@@ -598,9 +643,9 @@ async function placeOrder() {
   if (App.cart.length === 0)  { showToast('Your cart is empty!', 'error'); return; }
   if (!isLoggedIn())           { showToast('Please sign in first.', 'info'); showView('auth'); return; }
 
-  // GCash requires receipt upload
+  // GCash requires receipt photo upload
   if (selectedPayment === 'gcash' && !_gcashReceiptBase64) {
-    showToast('Please upload your GCash payment receipt first.', 'error');
+    showToast('Please upload a photo of your GCash receipt before placing your order.', 'error');
     document.getElementById('receipt-upload-area')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }

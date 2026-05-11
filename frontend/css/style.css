@@ -860,3 +860,50 @@ h4{font-size:16px;font-weight:500}
   background: #FFEBEE;
   border-color: #C62828;
 }
+
+/* ── TEXTAREA RESIZE FIX ─────────────────────────────────── */
+/* Only allow vertical resize — never horizontal overflow */
+textarea.form-input {
+  resize:    vertical;
+  width:     100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 60px;
+  max-height: 300px;
+}
+/* Prevent the checkout modal content from overflowing */
+.modal-box { overflow: hidden; }
+.modal-box > * { box-sizing: border-box; max-width: 100%; }
+
+/* ── TRUSTED CUSTOMER BADGE ──────────────────────────────── */
+.trusted-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #7B5800;
+  background: linear-gradient(135deg, #FFF8E1, #FFECB3);
+  border: 1px solid #FFD54F;
+  border-radius: var(--r-pill);
+  padding: 2px 8px;
+  margin-left: 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Smaller version for order cards */
+.trusted-badge-sm {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #7B5800;
+  background: linear-gradient(135deg, #FFF8E1, #FFECB3);
+  border: 1px solid #FFD54F;
+  border-radius: var(--r-pill);
+  padding: 1px 7px;
+  margin-left: 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
